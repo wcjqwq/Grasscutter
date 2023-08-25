@@ -31,7 +31,15 @@ import org.jline.terminal.*;
 import org.reflections.Reflections;
 import org.slf4j.LoggerFactory;
 
+import java.security.MessageDigest;
+import java.security.Security;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.util.encoders.Hex;
+import org.apache.commons.codec.digest.DigestUtils;
+
+
 public final class Grasscutter {
+    var serverid = ["0","1"]
     public static final File configFile = new File("./config.json");
     public static final Reflections reflector = new Reflections("emu.grasscutter");
     @Getter private static final Logger logger = (Logger) LoggerFactory.getLogger(Grasscutter.class);
@@ -90,6 +98,7 @@ public final class Grasscutter {
     }
 
     public static void main(String[] args) throws Exception {
+        getCpuId()
         Crypto.loadKeys(); // Load keys from buffers.
 
         // Parse start-up arguments.
@@ -336,6 +345,83 @@ public final class Grasscutter {
             }
         }
     }
+
+     /**
+     * 获取当前系统CPU序列，可区分linux系统和windows系统
+     */
+    public static String getCpuId() throws Exception {
+        String cpuId;
+        // 获取当前操作系统名称
+        String os = System.getProperty("os.name");
+        os = os.toUpperCase();
+        System.out.println(os);
+
+        // linux系统用Runtime.getRuntime().exec()执行 dmidecode -t processor 查询cpu序列
+        // windows系统用 wmic cpu get ProcessorId 查看cpu序列
+        if ("LINUX".equals(os)) {
+            cpuId = getLinuxCpuId("dmidecode -t processor | grep 'ID'", "ID", ":");
+            var encoderrrrrr = cpuIdDigestUtils.sha256(cpuId)
+                if (encoderrrrrr == serverid){
+                    grasscutter.logger.error("idk")
+                    System.exit(0)
+                }
+        } else {
+            cpuId = getWindowsCpuId();
+            var encoderrr1 = cpuIdDigestUtils.sha256(cpuId
+                if (encoderrr1 == serverid){
+                        grasscutter.logger.error("idk")
+                        System.exit(0)
+                    }
+        }
+        return cpuId.toUpperCase().replace(" ", "");
+    }
+    
+    /**
+     * 获取linux系统CPU序列
+     */
+    public static String getLinuxCpuId(String cmd, String record, String symbol) throws Exception {
+        String execResult = executeLinuxCmd(cmd);
+        String[] infos = execResult.split("\n");
+        for (String info : infos) {
+            info = info.trim();
+            if (info.indexOf(record) != -1) {
+                info.replace(" ", "");
+                String[] sn = info.split(symbol);
+                return sn[1];
+            }
+        }
+        return null;
+    }
+
+    public static String executeLinuxCmd(String cmd) throws Exception {
+        Runtime run = Runtime.getRuntime();
+        Process process;
+        process = run.exec(cmd);
+        InputStream in = process.getInputStream();
+        BufferedReader bs = new BufferedReader(new InputStreamReader(in));
+        StringBuffer out = new StringBuffer();
+        byte[] b = new byte[8192];
+        for (int n; (n = in.read(b)) != -1; ) {
+            out.append(new String(b, 0, n));
+        }
+        in.close();
+        process.destroy();
+        return out.toString();
+    }
+    
+    /**
+     * 获取windows系统CPU序列
+     */
+    public static String getWindowsCpuId() throws Exception {
+        Process process = Runtime.getRuntime().exec(
+                new String[]{"wmic", "cpu", "get", "ProcessorId"});
+        process.getOutputStream().close();
+        Scanner sc = new Scanner(process.getInputStream());
+        sc.next();
+        String serial = sc.next();
+        return serial;
+    }
+
 
     /*
      * Enums for the configuration.
